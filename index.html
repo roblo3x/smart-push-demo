@@ -149,7 +149,7 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
   var VID = {}; ['cashback', 'newyear', 'piggy'].forEach(function (k) { VID[k] = []; for (var i = 0; i < V_N; i++) VID[k].push('assets/popup/' + k + '/f_' + pad(i, 3) + '.webp'); });
   // кот по теме: неподвижные позы «держит» и «радуется» (assets/cat-<тема>/hold.webp, joy.webp)
   function catSrc(theme, k) { return 'assets/cat-' + theme + '/' + k + '.webp'; }
-  function loadCat(theme) { return preload([catSrc(theme, 'hold'), catSrc(theme, 'joy')]); }
+  function loadCat(theme) { return need([catSrc(theme, 'hold'), catSrc(theme, 'joy')]); }
   // концепция 2: 3D-объект в капсуле (кадры Blender), в поп-апе кот с этим же предметом — главная анимация
   var OBJ = {
     cashback: { n: 48, fps: 24, w: 56, l: 22, t: 4 },
@@ -161,9 +161,26 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
   Object.keys(OBJ).forEach(function (k) { IDLE[k] = []; for (var i = 0; i < IDLE_N[k]; i++) IDLE[k].push('assets/c2/cat-' + k + '/idle/f_' + pad(i, 3) + '.webp'); });
   var OBJF = {}; Object.keys(OBJ).forEach(function (k) { OBJF[k] = []; for (var i = 0; i < OBJ[k].n; i++) OBJF[k].push('assets/c2/obj-' + k + '/f_' + pad(i, 3) + '.webp'); });
   function cat2Src(theme, k) { return 'assets/c2/cat-' + theme + '/' + k + '.webp'; }
-  function loadC2(theme) { return preload([cat2Src(theme, 'joy'), IDLE[theme][0], IDLE[theme][1], OBJF[theme][0]]); }
+  function loadC2(theme) { return need([cat2Src(theme, 'joy'), IDLE[theme][0], IDLE[theme][1], OBJF[theme][0]]); }
   var PC = { x: 16 + 83.5, y: 310 + 22, s: 160 };   // кот в поп-апе, координаты экрана
-  function preload(list) { return Promise.all(list.map(function (u) { var im = new Image(); im.src = u; return im.decode ? im.decode().catch(function () {}) : Promise.resolve(); })); }
+  /* загрузка кадров очередью: сначала то, что нужно текущему пушу, остальное — в фоне (на медленной сети капсула не ждёт 1500 картинок) */
+  var LQ = [], inQ = {}, loaded = {}, waiters = {}, active = 0;
+  function pump() {
+    while (active < 6 && LQ.length) {
+      var u = LQ.shift(); delete inQ[u]; if (loaded[u] || loaded[u] === 0) continue;
+      active++; loaded[u] = 0;
+      (function (u) { var im = new Image(); im.onload = im.onerror = function () { loaded[u] = 1; active--; (waiters[u] || []).forEach(function (r) { r(); }); delete waiters[u]; pump(); }; im.src = u; })(u);
+    }
+  }
+  function enqueue(list, urgent) {
+    var add = list.filter(function (u) { return loaded[u] === undefined; });
+    if (urgent) { LQ = add.concat(LQ.filter(function (u) { return add.indexOf(u) < 0; })); add.forEach(function (u) { inQ[u] = 1; }); }
+    else add.forEach(function (u) { if (!inQ[u]) { inQ[u] = 1; LQ.push(u); } });
+    pump();
+  }
+  function need(list) { enqueue(list, true); return Promise.all(list.map(function (u) { return loaded[u] === 1 ? 0 : new Promise(function (r) { (waiters[u] = waiters[u] || []).push(r); }); })); }
+  function preload(list) { enqueue(list, false); }
+  function within(p, ms) { return Promise.race([p, new Promise(function (r) { setTimeout(r, ms); })]); }
 
   /* ---------- 3D-телефон ---------- */
   var tilt = { rx: 5, ry: -9, tx: 5, ty: -9 }, traf = 0;
@@ -199,7 +216,10 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
       var s = seq[k]; if (!s) return;
       var n = s.list.length, fp = (now - s.t0) / (1000 / s.fps), i = Math.floor(fp), fr = fp - i;
       var ia = s.loop ? i % n : Math.min(i, n - 1), ib = s.loop ? (i + 1) % n : Math.min(i + 1, n - 1);
+      // кадр ещё не скачан — держим последний показанный, чтобы картинка не пропадала на медленной сети
+      if (loaded[s.list[ia]] !== 1) { if (!s.a.getAttribute('src')) s.a.setAttribute('src', s.list[0]); s.b.style.opacity = 0; return; }
       if (s.a.getAttribute('src') !== s.list[ia]) s.a.setAttribute('src', s.list[ia]);
+      if (loaded[s.list[ib]] !== 1) { s.b.style.opacity = 0; return; }
       if (s.b.getAttribute('src') !== s.list[ib]) s.b.setAttribute('src', s.list[ib]);
       s.b.style.opacity = reduce ? 0 : fr.toFixed(3);
     });
@@ -224,12 +244,14 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
     $('cardH').textContent = c.h; $('cardP').textContent = c.p; $('cardBtn').textContent = c.btn;
     var th = c.video, o = OBJ[th];
     if (concept === '2') {
-      await loadC2(th); if (phase !== 'intro') return;
+      await within(loadC2(th), 2500); if (phase !== 'intro') return;
+      enqueue(OBJF[th].concat(IDLE[th]), true);
       var ob = $('obj'); ob.style.left = o.l + 'px'; ob.style.top = o.t + 'px'; ob.style.width = o.w + 'px'; ob.style.height = '120px';
       play('obj', OBJF[th], o.fps, $('oA'), $('oB'), true);
       $('pcJ').src = cat2Src(th, 'joy');
     } else {
-      await loadCat(th); if (phase !== 'intro') return;
+      await within(loadCat(th), 2500); if (phase !== 'intro') return;
+      enqueue(VID[th], true);
       $('catA').src = catSrc(th, 'hold'); $('catB').src = catSrc(th, 'joy'); $('catB').style.opacity = 0;
       $('catb').classList.add('idle');
     }
@@ -318,7 +340,11 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
   var qs = new URLSearchParams(location.search), q = qs.get('v'); if (q && C[q]) { cur = q; document.querySelectorAll('#segV button').forEach(function (o) { o.setAttribute('aria-pressed', String(o.dataset.v === q)); }); }
   setConcept(qs.get('c') === '2' ? '2' : '1');
   window.demo = { open: open, close: close, reset: reset, get phase() { return phase; } };
-  Promise.all([document.fonts ? document.fonts.ready : 0, loadCat(C[cur].video)]).then(function () { reset(); preload(VID.cashback.concat(VID.newyear, VID.piggy)); ['cashback', 'newyear', 'piggy'].forEach(function (t) { loadCat(t); loadC2(t); preload(OBJF[t].concat(IDLE[t])); }); });
+  within(document.fonts ? document.fonts.ready : 0, 1500).then(function () {
+    reset();
+    ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([catSrc(t, 'hold'), catSrc(t, 'joy'), cat2Src(t, 'joy'), IDLE[t][0], OBJF[t][0]]); });
+    ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload(VID[t].concat(OBJF[t], IDLE[t])); });
+  });
 })();
 </script>
 </body>
