@@ -61,7 +61,13 @@ button{font:inherit}
 .cat img{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* концепция 2: в капсуле 3D-объект, кот — главная анимация поп-апа */
 .obj{position:absolute}
-.obj img{position:absolute;left:0;top:0;width:100%;display:block}
+.obj img,.obj video{position:absolute;left:0;top:0;width:100%;display:block}
+/* видео с альфой (WebM VP9 / HEVC) вместо сотен кадров; ?frames=1 и Firefox — покадровый режим */
+#vV{position:absolute;left:0;top:0;width:343px;height:172px;display:block}
+body[data-c="2"] .media>video{display:none}
+.media .pcat video{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0}
+body.vmode #vA, body.vmode #vB, body.vmode #oA, body.vmode #oB, body.vmode #pcA, body.vmode #pcB{display:none}
+body:not(.vmode) #vV, body:not(.vmode) #oV, body:not(.vmode) #pcV{display:none}
 body[data-c="1"] #objwin, body[data-c="2"] #catwin{display:none}
 .pcat{position:absolute;left:83.5px;top:22px;width:160px;height:160px;display:none;transform-origin:55% 92%}
 /* концепция 2: карточка выше на 28px (низ на месте, над капсулой), кот по центру тела с воздухом сверху и до заголовка */
@@ -112,14 +118,14 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
           <img class="abs home" src="assets/home.png" alt="Главная ОМП">
           <button class="abs" id="cap" type="button" aria-haspopup="dialog">
             <span class="catwin" id="catwin" aria-hidden="true"><span class="cat"><span class="catb" id="catb"><img id="catA" alt=""><img id="catB" alt="" style="opacity:0"></span></span></span>
-            <span class="catwin" id="objwin" aria-hidden="true"><span class="obj" id="obj"><img id="oA" alt=""><img id="oB" alt="" style="opacity:0"></span></span>
+            <span class="catwin" id="objwin" aria-hidden="true"><span class="obj" id="obj"><img id="oA" alt=""><img id="oB" alt="" style="opacity:0"><video id="oV" muted playsinline loop preload="auto"></video></span></span>
             <span class="tx"><span class="t1" id="capT1"></span><span class="t2" id="capT2"></span></span>
             <img class="chev" src="assets/chevron-right.svg" width="24" height="24" alt="">
           </button>
           <div class="abs" id="dim"></div>
           <section class="abs" id="card" role="dialog" aria-modal="true" aria-labelledby="cardH">
-            <div class="media" aria-hidden="true"><img id="vA" alt=""><img id="vB" alt="">
-              <div class="pcat" id="pcat"><div class="pcatb" id="pcatb"><img id="pcA" alt=""><img id="pcB" alt=""><img id="pcJ" alt=""></div></div></div>
+            <div class="media" aria-hidden="true"><img id="vA" alt=""><img id="vB" alt=""><video id="vV" muted playsinline loop preload="auto"></video>
+              <div class="pcat" id="pcat"><div class="pcatb" id="pcatb"><img id="pcA" alt=""><img id="pcB" alt=""><video id="pcV" muted playsinline loop preload="auto"></video><img id="pcJ" alt=""></div></div></div>
             <h2 id="cardH"></h2><p id="cardP"></p>
             <button class="pill" id="cardBtn" type="button"></button>
           </section>
@@ -162,6 +168,15 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
   var OBJF = {}; Object.keys(OBJ).forEach(function (k) { OBJF[k] = []; for (var i = 0; i < OBJ[k].n; i++) OBJF[k].push('assets/c2/obj-' + k + '/f_' + pad(i, 3) + '.webp'); });
   function cat2Src(theme, k) { return 'assets/c2/cat-' + theme + '/' + k + '.webp'; }
   function loadC2(theme) { return need([cat2Src(theme, 'joy'), IDLE[theme][0], IDLE[theme][1], OBJF[theme][0]]); }
+  var VMODE = !/[?&]frames=1/.test(location.search) && !/firefox|fxios/i.test(navigator.userAgent);
+  var HEVC = /iP(hone|ad|od)/.test(navigator.userAgent) || /^((?!chrome|chromium|android|crios|edg|yabrowser|opr).)*safari/i.test(navigator.userAgent);
+  if (VMODE) document.body.classList.add('vmode');
+  function vsrc(name) { return 'assets/v/' + name + (HEVC ? '.mp4' : '.webm'); }
+  function vidReady(el, name) {
+    var u = vsrc(name); if (el.getAttribute('src') !== u) { el.src = u; el.load(); }
+    return el.readyState >= 3 ? Promise.resolve() : new Promise(function (r) { el.addEventListener('canplaythrough', r, { once: true }); el.addEventListener('canplay', r, { once: true }); el.addEventListener('error', r, { once: true }); });
+  }
+  function vidPlay(el, name) { var u = vsrc(name); if (el.getAttribute('src') !== u) el.src = u; try { el.currentTime = 0; } catch (e) {} var p = el.play(); if (p && p.catch) p.catch(function () {}); }
   var PC = { x: 16 + 83.5, y: 310 + 22, s: 160 };   // кот в поп-апе, координаты экрана
   /* загрузка кадров очередью: сначала то, что нужно текущему пушу, остальное — в фоне (на медленной сети капсула не ждёт 1500 картинок) */
   var LQ = [], inQ = {}, loaded = {}, waiters = {}, active = 0;
@@ -244,14 +259,14 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
     $('cardH').textContent = c.h; $('cardP').textContent = c.p; $('cardBtn').textContent = c.btn;
     var th = c.video, o = OBJ[th];
     if (concept === '2') {
-      await within(loadC2(th), 2500); if (phase !== 'intro') return;
-      enqueue(OBJF[th].concat(IDLE[th]), true);
+      if (VMODE) { await within(Promise.all([vidReady($('oV'), 'obj-' + th), vidReady($('pcV'), 'cat-' + th), need([cat2Src(th, 'joy')])]), 2500); if (phase !== 'intro') return; }
+      else { await within(loadC2(th), 2500); if (phase !== 'intro') return; enqueue(OBJF[th].concat(IDLE[th]), true); }
       var ob = $('obj'); ob.style.left = o.l + 'px'; ob.style.top = o.t + 'px'; ob.style.width = o.w + 'px'; ob.style.height = '120px';
-      play('obj', OBJF[th], o.fps, $('oA'), $('oB'), true);
+      if (VMODE) vidPlay($('oV'), 'obj-' + th); else play('obj', OBJF[th], o.fps, $('oA'), $('oB'), true);
       $('pcJ').src = cat2Src(th, 'joy');
     } else {
       await within(loadCat(th), 2500); if (phase !== 'intro') return;
-      enqueue(VID[th], true);
+      if (VMODE) vidReady($('vV'), 'popup-' + th); else enqueue(VID[th], true);
       $('catA').src = catSrc(th, 'hold'); $('catB').src = catSrc(th, 'joy'); $('catB').style.opacity = 0;
       $('catb').classList.add('idle');
     }
@@ -269,8 +284,12 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
     var card = $('card');
     run($('cap'), [{ transform: 'none', opacity: 1 }, { transform: 'scale(.97)', opacity: 1, offset: .4 }, { transform: 'none', opacity: 0 }], { duration: 360, easing: 'ease-out' });
     $('dim').classList.add('on'); run($('dim'), [{ opacity: 0 }, { opacity: .35 }], { duration: 360, easing: 'ease-out' });
-    if (concept === '1') play('vid', VID[C[cur].video], V_FPS, $('vA'), $('vB'), true);
-    else { $('pcA').style.opacity = 1; $('pcJ').style.opacity = 0; $('pcat').style.opacity = 0; play('pcat', IDLE[C[cur].video], IDLE_FPS, $('pcA'), $('pcB'), true); }
+    var th = C[cur].video;
+    if (concept === '1') { if (VMODE) vidPlay($('vV'), 'popup-' + th); else play('vid', VID[th], V_FPS, $('vA'), $('vB'), true); }
+    else {
+      $('pcJ').style.opacity = 0; $('pcat').style.opacity = 0;
+      if (VMODE) { $('pcV').style.opacity = 1; vidPlay($('pcV'), 'cat-' + th); } else { $('pcA').style.opacity = 1; play('pcat', IDLE[th], IDLE_FPS, $('pcA'), $('pcB'), true); }
+    }
     card.classList.add('on');
     spring(card, function (p) { return { transform: 'scale(' + lerp(.06, 1, p).toFixed(4) + ')', opacity: Math.min(1, p * 2.5) }; }, 190, 21);
     if (concept === '2') { await catAppears(); phase = 'card'; $('cardBtn').focus({ preventScroll: true }); return; }
@@ -290,7 +309,7 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
       // кот радуется в поп-апе, потом поп-ап сворачивается в капсулу с объектом
       seq.pcat = null;
       run($('pcJ'), [{ opacity: 0 }, { opacity: 1 }], { duration: 140, easing: 'ease-out' });
-      run($('pcA'), [{ opacity: 0 }], { duration: 180, delay: 60, easing: 'ease-in' }); run($('pcB'), [{ opacity: 0 }], { duration: 180, delay: 60, easing: 'ease-in' });
+      ['pcA', 'pcB', 'pcV'].forEach(function (id) { run($(id), [{ opacity: 0 }], { duration: 180, delay: 60, easing: 'ease-in' }); });
       run($('pcatb'), [{ transform: 'none' }, { transform: 'translateY(5px) scale(1.04,.94)', offset: .18 }, { transform: 'translateY(-9px) scale(.97,1.04)', offset: .5 }, { transform: 'translateY(1px)', offset: .78 }, { transform: 'none' }], { duration: 640, easing: 'ease-out' });
       [[PC.x + 31, PC.y + 34, '#FFC53D', 13, 120], [PC.x + 121, PC.y + 49, '#37D3C0', 10, 220], [PC.x + 128, PC.y + 15, '#7EA3FF', 9, 330], [PC.x + 20, PC.y + 89, '#FFC53D', 8, 400]].forEach(function (a) { spark(a[0], a[1], a[2], a[3], a[4], true); });
       await wait(900);
@@ -323,7 +342,8 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
     gen++; timers.forEach(clearTimeout); timers = []; live.forEach(function (a) { try { a.cancel(); } catch (e) {} }); live = [];
     $('sparks').innerHTML = ''; $('dim').classList.remove('on'); $('card').classList.remove('on'); seq.vid = null; seq.obj = null; seq.pcat = null;
     ['cap', 'dim', 'card', 'pcat', 'obj'].forEach(function (id) { $(id).removeAttribute('style'); }); document.querySelector('.cat').removeAttribute('style'); $('catb').classList.remove('idle'); $('catB').style.opacity = 0;
-    ['pcA', 'pcB', 'pcJ'].forEach(function (id) { $(id).style.opacity = 0; });
+    ['pcA', 'pcB', 'pcV', 'pcJ'].forEach(function (id) { $(id).style.opacity = 0; });
+    ['vV', 'oV', 'pcV'].forEach(function (id) { try { $(id).pause(); } catch (e) {} });
     phase = 'idle'; start();
   }
   function inner() { return concept === '2' ? $('obj') : document.querySelector('.cat'); }
@@ -342,8 +362,8 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
   window.demo = { open: open, close: close, reset: reset, get phase() { return phase; } };
   within(document.fonts ? document.fonts.ready : 0, 1500).then(function () {
     reset();
-    ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([catSrc(t, 'hold'), catSrc(t, 'joy'), cat2Src(t, 'joy'), IDLE[t][0], OBJF[t][0]]); });
-    ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload(VID[t].concat(OBJF[t], IDLE[t])); });
+    ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([catSrc(t, 'hold'), catSrc(t, 'joy'), cat2Src(t, 'joy')]); });
+    if (!VMODE) ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([IDLE[t][0], OBJF[t][0]]); preload(VID[t].concat(OBJF[t], IDLE[t])); });
   });
 })();
 </script>
