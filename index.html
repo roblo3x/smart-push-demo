@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Умный пуш · поп-ап</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+/* Как прототип экранов успеха: переключатель сверху, 3D-телефон под ним. */
+:root{
+  --bg1:#f1f3f7; --bg2:#d6dbe4; --ink:#14171c; --muted:#5d6472; --seg:#fff; --seg-line:#d3d9e2; --accent:#2c64e3; --accent-ink:#fff; --floor:rgb(18 24 38 / .30); --focus:#2c64e3;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg1:#22262d;--bg2:#0b0c0f;--ink:#edf0f5;--muted:#9aa2b0;--seg:#1d2128;--seg-line:#333943;--accent:#7ea3ff;--accent-ink:#0f1420;--floor:rgb(0 0 0 / .65);--focus:#9bb8ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg1:#22262d;--bg2:#0b0c0f;--ink:#edf0f5;--muted:#9aa2b0;--seg:#1d2128;--seg-line:#333943;--accent:#7ea3ff;--accent-ink:#0f1420;--floor:rgb(0 0 0 / .65);--focus:#9bb8ff;color-scheme:dark}
+*{box-sizing:border-box} [hidden]{display:none!important}
+html,body{height:100%} html{overflow-x:hidden}
+body{margin:0;padding-inline:16px;background:radial-gradient(120% 80% at 50% 28%,var(--bg1) 0%,var(--bg2) 100%) fixed,var(--bg2);color:var(--ink);font:400 14px/1.4 Montserrat,system-ui,sans-serif;overflow-x:hidden}
+button{font:inherit}
+.scene{min-height:100%;display:grid;grid-template-rows:auto auto 1fr;justify-items:center;gap:10px 18px;padding-block:22px 18px}
+.seg{display:inline-flex;padding:4px;gap:2px;border-radius:26px;background:var(--seg);border:1px solid var(--seg-line);box-shadow:0 6px 20px -12px rgb(0 0 0 / .35)}
+.seg button{border:0;background:transparent;color:var(--muted);padding:9px 18px;border-radius:999px;cursor:pointer;font-weight:600;font-size:13.5px;line-height:18px;white-space:nowrap}
+.seg button:hover{color:var(--ink)} .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.seg.sm button{padding:7px 14px;font-size:12.5px;line-height:16px}
+.fit{margin-top:8px}
+.fit{position:relative}
+.persp{position:absolute;left:0;top:0;width:420px;height:900px;transform-origin:0 0}
+.float{position:absolute;inset:0;perspective:2200px;animation:float 7s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-7px)}}
+.device{position:absolute;left:11.5px;top:20px;width:397px;height:834px;transform:rotateX(var(--rx,5deg)) rotateY(var(--ry,-9deg))}
+.layer{position:absolute;inset:0;border-radius:58px}
+.edge{transform:translate(var(--ex,7px),var(--ey,3px));background:linear-gradient(90deg,#0d0e10,#2a2d32 30%,#44484f 60%,#1a1c1f);box-shadow:0 0 0 1px #0a0b0c}
+.frame{background:linear-gradient(150deg,#4a4e55 0%,#24272c 22%,#15171a 48%,#2c2f35 72%,#0d0e10 100%);box-shadow:inset 0 0 0 1.2px rgb(255 255 255 / .22),inset 0 0 0 3px #08090a,inset 0 2px 1px rgb(255 255 255 / .16)}
+.key{position:absolute;width:5px;border-radius:2px;background:linear-gradient(90deg,#1a1c20,#50545b,#1a1c20)}
+.k1{right:-4px;top:182px;height:64px;transform:translate(var(--ex,7px),var(--ey,3px))} .k2{right:-4px;top:266px;height:98px;transform:translate(var(--ex,7px),var(--ey,3px))} .k3{left:-4px;top:210px;height:120px}
+.glass{position:absolute;left:11px;top:11px;width:375px;height:812px;border-radius:47px;overflow:hidden;background:#000;isolation:isolate}
+.cam{position:absolute;left:50%;top:10px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#3a4660 0 18%,#0a0c10 40%);box-shadow:0 0 0 2px #050608;z-index:30;pointer-events:none}
+.glare{position:absolute;inset:0;border-radius:47px;pointer-events:none;z-index:29;background:linear-gradient(calc(118deg + var(--ga,0deg)),rgb(255 255 255 / 0) 30%,rgb(255 255 255 / .15) calc(42% + var(--gx,0%)),rgb(255 255 255 / 0) calc(56% + var(--gx,0%))),radial-gradient(120% 60% at calc(20% + var(--gx,0%)) -10%,rgb(255 255 255 / .09),transparent 60%);mix-blend-mode:screen}
+.floor{position:absolute;left:50%;bottom:8px;width:330px;height:46px;margin-left:-165px;border-radius:50%;background:var(--floor);filter:blur(22px);transform:translateX(var(--fx,0px)) scaleX(var(--fs,1))}
+
+/* ---------- экран ОМП ---------- */
+.scr{position:absolute;inset:0;background:#f2f3f8;font-family:Montserrat,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.abs{position:absolute}
+.home{left:0;top:0;width:375px;height:812px;display:block;user-select:none;-webkit-user-drag:none}
+.homeind{left:121.5px;top:799px;width:132px;height:5px;border-radius:4px;background:#192433;z-index:20}
+/* наша капсула (Figma 171:25738), кот живёт внутри */
+#cap{left:16px;top:651px;width:343px;height:64px;border:0;padding:0 14px 0 var(--pl,92px);display:flex;align-items:center;gap:6px;text-align:left;color:#fff;border-radius:32px;
+  background:#0c101a url("assets/capsule-bg.png") left center/343px 64px no-repeat;box-shadow:0 2px 7px #04070e1a,0 8px 22px -2px #04070e2e,inset 0 0 0 1px #ffffff0d;cursor:pointer;z-index:6;opacity:0;transform-origin:50% 100%;-webkit-tap-highlight-color:transparent}
+#cap:focus-visible{outline:2px solid #8fb2ff;outline-offset:3px}
+#cap .tx{flex:1;min-width:0;position:relative}
+#cap .t1{display:block;font-size:15px;font-weight:600;line-height:20px;letter-spacing:-.42px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cap .t2{display:block;font-size:13px;font-weight:500;line-height:18px;color:#ffffffb3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cap .chev{flex:0 0 24px;position:relative}
+/* кот по теме живёт внутри капсулы: целиком в её левой части, обрезан её скруглением; рот не двигается */
+.catwin{position:absolute;left:0;top:0;width:104px;height:64px;overflow:hidden;border-radius:32px 0 0 32px;pointer-events:none}
+.cat{position:absolute;left:10px;top:3px;width:70px;height:70px}
+.catb{position:absolute;inset:0;transform-origin:50% 92%}
+.catb.idle{animation:breathe 3.4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:none}50%{transform:scale(1.022,1.036) rotate(-1.4deg)}}
+.cat img{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* концепция 2: в капсуле 3D-объект, кот — главная анимация поп-апа */
+.obj{position:absolute}
+.obj img{position:absolute;left:0;top:0;width:100%;display:block}
+body[data-c="1"] #objwin, body[data-c="2"] #catwin{display:none}
+.pcat{position:absolute;left:83.5px;top:22px;width:160px;height:160px;display:none;transform-origin:55% 92%}
+/* концепция 2: карточка выше на 28px (низ на месте, над капсулой), кот по центру тела с воздухом сверху и до заголовка */
+body[data-c="2"] #card{top:310px;height:405px;background-size:343px 405px;transform-origin:171.5px 373px}
+body[data-c="2"] .media{height:200px}
+body[data-c="2"] #card h2{top:204px} body[data-c="2"] #card p{top:240px} body[data-c="2"] #card .pill{top:339px}
+body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
+.pcatb{position:absolute;inset:0;transform-origin:50% 92%}
+.pcatb.idle{animation:breathe 3.4s ease-in-out infinite}
+.media .pcat img{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0}
+#dim{inset:0;background:#0b1220;opacity:0;pointer-events:none;z-index:8}
+#dim.on{pointer-events:auto}
+/* поп-ап: тёмная карточка 343×377, сверху 3D-видео */
+#card{left:16px;top:338px;width:343px;height:377px;border-radius:32px;overflow:hidden;background:#0c101a url("assets/card-bg.png") 0 0/343px 377px no-repeat;color:#fff;text-align:center;z-index:9;opacity:0;pointer-events:none;
+  box-shadow:0 16px 32px rgba(8,12,24,.35),0 3px 8px rgba(8,12,24,.25);transform-origin:171.5px 345px}
+#card.on{pointer-events:auto}
+.media{position:absolute;left:0;top:0;width:343px;height:172px}
+.media img{position:absolute;inset:0;width:343px;height:172px;display:block}
+#card h2{position:absolute;left:19px;right:19px;top:176px;margin:0;font-size:24px;line-height:28px;font-weight:600;letter-spacing:-.6px}
+#card p{position:absolute;left:30px;right:30px;top:212px;margin:0;font-size:13px;line-height:16px;font-weight:500;color:rgba(255,255,255,.9)}
+#card .pill{position:absolute;left:20px;top:311px;width:303px;height:44px;border:0;border-radius:22px;background:#fff;color:#1c212e;font-size:15px;font-weight:600;cursor:pointer}
+#card .pill:active{transform:scale(.97)}
+#card .pill:focus-visible{outline:2px solid #8fb2ff;outline-offset:3px}
+.spark{position:absolute;width:14px;height:14px;z-index:7;pointer-events:none;opacity:0}
+.spark svg{width:100%;height:100%;display:block}
+@media (prefers-reduced-motion:reduce){.float{animation:none}}
+</style>
+</head>
+<body>
+<main class="scene">
+  <div class="seg sm" role="group" aria-label="Концепция">
+    <button type="button" data-c="1" aria-pressed="true">Кот в пуше</button>
+    <button type="button" data-c="2" aria-pressed="false">3D в пуше → кот в поп-апе</button>
+  </div>
+  <div class="seg" role="group" aria-label="Пуш" id="segV">
+    <button type="button" data-v="cb" aria-pressed="true">Кешбэк</button>
+    <button type="button" data-v="ny" aria-pressed="false">Новогодняя игра</button>
+    <button type="button" data-v="pig" aria-pressed="false">Копилка</button>
+  </div>
+  <div class="fit" id="fit">
+    <div class="floor" id="floor"></div>
+    <div class="persp" id="persp"><div class="float"><div class="device" id="device">
+      <div class="layer edge"></div>
+      <i class="key k1"></i><i class="key k2"></i><i class="key k3"></i>
+      <div class="layer frame"></div>
+      <div class="glass">
+        <div class="scr" id="scr">
+          <img class="abs home" src="assets/home.png" alt="Главная ОМП">
+          <button class="abs" id="cap" type="button" aria-haspopup="dialog">
+            <span class="catwin" id="catwin" aria-hidden="true"><span class="cat"><span class="catb" id="catb"><img id="catA" alt=""><img id="catB" alt="" style="opacity:0"></span></span></span>
+            <span class="catwin" id="objwin" aria-hidden="true"><span class="obj" id="obj"><img id="oA" alt=""><img id="oB" alt="" style="opacity:0"></span></span>
+            <span class="tx"><span class="t1" id="capT1"></span><span class="t2" id="capT2"></span></span>
+            <img class="chev" src="assets/chevron-right.svg" width="24" height="24" alt="">
+          </button>
+          <div class="abs" id="dim"></div>
+          <section class="abs" id="card" role="dialog" aria-modal="true" aria-labelledby="cardH">
+            <div class="media" aria-hidden="true"><img id="vA" alt=""><img id="vB" alt="">
+              <div class="pcat" id="pcat"><div class="pcatb" id="pcatb"><img id="pcA" alt=""><img id="pcB" alt=""><img id="pcJ" alt=""></div></div></div>
+            <h2 id="cardH"></h2><p id="cardP"></p>
+            <button class="pill" id="cardBtn" type="button"></button>
+          </section>
+          <div id="sparks"></div>
+          <div class="abs homeind"></div>
+        </div>
+        <div class="glare" id="glare"></div>
+        <div class="cam"></div>
+      </div>
+    </div></div></div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- контент ---------- */
+  var C = {
+    cb: { t1: 'Кешбэк начислен!', t2: 'За покупки в октябре', h: '+1 284 ₽ кешбэка', p: 'Вернули за покупки в октябре. Деньги уже на карте Халва', btn: 'Отлично', video: 'cashback' },
+    pig: { t1: 'Ура, зарплата пришла!', t2: 'Отложите часть в копилку', h: 'Отложите в копилку', p: 'Зарплата уже на карте Халва. Отложите часть — пусть копится к цели', btn: 'Отложить', video: 'piggy' },
+    ny: { t1: 'Новогодний маджонг', t2: 'Нарядите свою ёлку', h: 'Нарядите свою ёлку', p: 'Новогодний маджонг: проходите уровни — на ёлке появляются игрушки. До 15 января', btn: 'Играть', video: 'newyear' }
+  };
+  var V_FPS = 30, V_N = 120;
+  var pad = function (n, w) { return String(n).padStart(w, '0'); };
+  var VID = {}; ['cashback', 'newyear', 'piggy'].forEach(function (k) { VID[k] = []; for (var i = 0; i < V_N; i++) VID[k].push('assets/popup/' + k + '/f_' + pad(i, 3) + '.webp'); });
+  // кот по теме: неподвижные позы «держит» и «радуется» (assets/cat-<тема>/hold.webp, joy.webp)
+  function catSrc(theme, k) { return 'assets/cat-' + theme + '/' + k + '.webp'; }
+  function loadCat(theme) { return preload([catSrc(theme, 'hold'), catSrc(theme, 'joy')]); }
+  // концепция 2: 3D-объект в капсуле (кадры Blender), в поп-апе кот с этим же предметом — главная анимация
+  var OBJ = {
+    cashback: { n: 48, fps: 24, w: 56, l: 22, t: 4 },
+    newyear: { n: 120, fps: 30, w: 64, l: 20, t: -12 },
+    piggy: { n: 120, fps: 30, w: 62, l: 18, t: -15 }
+  };
+  // кот в поп-апе держит тот же предмет и живёт петлёй Kling «туда-обратно» только из кадров с закрытым ртом, 24 fps
+  var IDLE_N = { cashback: 148, newyear: 74, piggy: 190 }, IDLE_FPS = 24, IDLE = {};
+  Object.keys(OBJ).forEach(function (k) { IDLE[k] = []; for (var i = 0; i < IDLE_N[k]; i++) IDLE[k].push('assets/c2/cat-' + k + '/idle/f_' + pad(i, 3) + '.webp'); });
+  var OBJF = {}; Object.keys(OBJ).forEach(function (k) { OBJF[k] = []; for (var i = 0; i < OBJ[k].n; i++) OBJF[k].push('assets/c2/obj-' + k + '/f_' + pad(i, 3) + '.webp'); });
+  function cat2Src(theme, k) { return 'assets/c2/cat-' + theme + '/' + k + '.webp'; }
+  function loadC2(theme) { return preload([cat2Src(theme, 'joy'), IDLE[theme][0], IDLE[theme][1], OBJF[theme][0]]); }
+  var PC = { x: 16 + 83.5, y: 310 + 22, s: 160 };   // кот в поп-апе, координаты экрана
+  function preload(list) { return Promise.all(list.map(function (u) { var im = new Image(); im.src = u; return im.decode ? im.decode().catch(function () {}) : Promise.resolve(); })); }
+
+  /* ---------- 3D-телефон ---------- */
+  var tilt = { rx: 5, ry: -9, tx: 5, ty: -9 }, traf = 0;
+  function fit() {
+    var avH = innerHeight - $('fit').getBoundingClientRect().top - 12, avW = Math.min(document.documentElement.clientWidth - 32, 560);
+    var k = Math.max(.42, Math.min(1, avH / 900, avW / 420));
+    $('persp').style.transform = 'scale(' + k + ')'; $('fit').style.width = 420 * k + 'px'; $('fit').style.height = 900 * k + 'px';
+  }
+  addEventListener('resize', fit); fit();
+  function applyTilt() {
+    var d = $('device'); d.style.setProperty('--rx', tilt.rx.toFixed(2) + 'deg'); d.style.setProperty('--ry', tilt.ry.toFixed(2) + 'deg');
+    $('glare').style.setProperty('--gx', (tilt.ry * -1.6).toFixed(1) + '%'); $('glare').style.setProperty('--ga', (tilt.rx * 1.2).toFixed(1) + 'deg');
+    d.style.setProperty('--ex', (-tilt.ry * .8).toFixed(2) + 'px'); d.style.setProperty('--ey', (tilt.rx * .6).toFixed(2) + 'px');
+    $('floor').style.setProperty('--fx', (tilt.ry * -2.2).toFixed(1) + 'px'); $('floor').style.setProperty('--fs', (1 - Math.abs(tilt.ry) / 90).toFixed(3));
+  }
+  function tloop() { tilt.rx += (tilt.tx - tilt.rx) * .08; tilt.ry += (tilt.ty - tilt.ry) * .08; applyTilt(); traf = (Math.abs(tilt.tx - tilt.rx) > .01 || Math.abs(tilt.ty - tilt.ry) > .01) ? requestAnimationFrame(tloop) : 0; }
+  applyTilt();
+  if (!reduce && matchMedia('(hover: hover)').matches) addEventListener('pointermove', function (e) { tilt.ty = -9 + (e.clientX / innerWidth - .5) * 16; tilt.tx = 5 - (e.clientY / innerHeight - .5) * 10; if (!traf) traf = requestAnimationFrame(tloop); });
+
+  /* ---------- пружины ---------- */
+  var live = [], timers = [], gen = 0;
+  function springCurve(k, c) { var x = 0, v = 0, dt = 1 / 240, t = 0, out = [0], i = 0; while (t < 3) { v += (-k * (x - 1) - c * v) * dt; x += v * dt; t += dt; if (++i % 4 === 0) out.push(x); if (t > .25 && Math.abs(x - 1) < .0008 && Math.abs(v) < .01) break; } out.push(1); return { p: out, ms: Math.round(t * 1000) }; }
+  function run(el, kf, opt) { if (reduce) { var l = Object.assign({}, kf[kf.length - 1]); delete l.offset; Object.assign(el.style, l); return; } live.push(el.animate(kf, Object.assign({ fill: 'forwards' }, opt))); }
+  function spring(el, fn, k, c, opt) { var s = springCurve(k, c), n = s.p.length; run(el, s.p.map(function (p, i) { var f = fn(p); f.offset = i / (n - 1); return f; }), Object.assign({ duration: s.ms, easing: 'linear' }, opt || {})); }
+  function wait(ms) { var g = gen; return new Promise(function (r) { timers.push(setTimeout(function () { if (g === gen) r(); }, reduce ? 0 : ms)); }); }
+  var lerp = function (a, b, p) { return a + (b - a) * p; };
+
+  /* ---------- покадровые петли: кот и 3D-видео, кадры плавно перетекают ---------- */
+  var seq = { cat: null, vid: null }, raf = 0;
+  function play(slot, list, fps, a, b, loop) { seq[slot] = { list: list, fps: fps, a: a, b: b, loop: loop, t0: performance.now() }; if (!raf) raf = requestAnimationFrame(tick); }
+  function tick(now) {
+    ['vid', 'obj', 'pcat'].forEach(function (k) {
+      var s = seq[k]; if (!s) return;
+      var n = s.list.length, fp = (now - s.t0) / (1000 / s.fps), i = Math.floor(fp), fr = fp - i;
+      var ia = s.loop ? i % n : Math.min(i, n - 1), ib = s.loop ? (i + 1) % n : Math.min(i + 1, n - 1);
+      if (s.a.getAttribute('src') !== s.list[ia]) s.a.setAttribute('src', s.list[ia]);
+      if (s.b.getAttribute('src') !== s.list[ib]) s.b.setAttribute('src', s.list[ib]);
+      s.b.style.opacity = reduce ? 0 : fr.toFixed(3);
+    });
+    raf = requestAnimationFrame(tick);
+  }
+
+  /* ---------- искры ---------- */
+  var STAR = '<svg viewBox="-1 -1 2 2"><path d="M0 -1C.14 -.14 .14 -.14 1 0C.14 .14 .14 .14 0 1C-.14 .14 -.14 .14 -1 0C-.14 -.14 -.14 -.14 0 -1Z" fill="FILL"/></svg>';
+  function spark(x, y, col, size, delay, top) {
+    if (reduce) return;
+    var s = document.createElement('span'); s.className = 'spark abs'; s.innerHTML = STAR.replace('FILL', col); if (top) s.style.zIndex = 11;
+    s.style.left = (x - size / 2) + 'px'; s.style.top = (y - size / 2) + 'px'; s.style.width = s.style.height = size + 'px';
+    $('sparks').appendChild(s);
+    s.animate([{ transform: 'scale(0) rotate(0)', opacity: 1 }, { transform: 'scale(1.2) rotate(45deg)', opacity: 1, offset: .4 }, { transform: 'scale(0) rotate(90deg)', opacity: 0 }], { duration: 640, delay: delay, easing: 'ease-out' }).onfinish = function () { s.remove(); };
+  }
+
+  /* ---------- сценарий ---------- */
+  var cur = 'cb', phase = 'idle';
+  async function start() {
+    var c = C[cur]; phase = 'intro';
+    $('capT1').textContent = c.t1; $('capT2').textContent = c.t2; $('cap').setAttribute('aria-label', c.t1 + ' ' + c.t2);
+    $('cardH').textContent = c.h; $('cardP').textContent = c.p; $('cardBtn').textContent = c.btn;
+    var th = c.video, o = OBJ[th];
+    if (concept === '2') {
+      await loadC2(th); if (phase !== 'intro') return;
+      var ob = $('obj'); ob.style.left = o.l + 'px'; ob.style.top = o.t + 'px'; ob.style.width = o.w + 'px'; ob.style.height = '120px';
+      play('obj', OBJF[th], o.fps, $('oA'), $('oB'), true);
+      $('pcJ').src = cat2Src(th, 'joy');
+    } else {
+      await loadCat(th); if (phase !== 'intro') return;
+      $('catA').src = catSrc(th, 'hold'); $('catB').src = catSrc(th, 'joy'); $('catB').style.opacity = 0;
+      $('catb').classList.add('idle');
+    }
+    await wait(700);
+    // капсула выезжает пружиной, кот поднимается изнутри, пока она доезжает
+    spring($('cap'), function (p) { return { transform: 'translateY(' + lerp(96, 0, p).toFixed(2) + 'px) scale(' + lerp(.92, 1, Math.min(p, 1.04)).toFixed(4) + ')', opacity: Math.min(1, p * 3) }; }, 170, 17);
+    await wait(260);
+    spring(inner(), function (p) { return { transform: 'translateY(' + lerp(70, 0, p).toFixed(2) + 'px)' }; }, 150, 14);
+    await wait(500);
+    spark(90, 642, '#FFC53D', 10, 0); spark(28, 650, '#37D3C0', 8, 120);
+    phase = 'home';
+  }
+  async function open() {
+    if (phase !== 'home') return; phase = 'opening';
+    var card = $('card');
+    run($('cap'), [{ transform: 'none', opacity: 1 }, { transform: 'scale(.97)', opacity: 1, offset: .4 }, { transform: 'none', opacity: 0 }], { duration: 360, easing: 'ease-out' });
+    $('dim').classList.add('on'); run($('dim'), [{ opacity: 0 }, { opacity: .35 }], { duration: 360, easing: 'ease-out' });
+    if (concept === '1') play('vid', VID[C[cur].video], V_FPS, $('vA'), $('vB'), true);
+    else { $('pcA').style.opacity = 1; $('pcJ').style.opacity = 0; $('pcat').style.opacity = 0; play('pcat', IDLE[C[cur].video], IDLE_FPS, $('pcA'), $('pcB'), true); }
+    card.classList.add('on');
+    spring(card, function (p) { return { transform: 'scale(' + lerp(.06, 1, p).toFixed(4) + ')', opacity: Math.min(1, p * 2.5) }; }, 190, 21);
+    if (concept === '2') { await catAppears(); phase = 'card'; $('cardBtn').focus({ preventScroll: true }); return; }
+    await wait(420); phase = 'card'; $('cardBtn').focus({ preventScroll: true });
+  }
+  // кот поднимается в поп-апе уже с предметом из капсулы и живёт петлёй
+  async function catAppears() {
+    await wait(140);
+    spring($('pcat'), function (p) { return { transform: 'translateY(' + lerp(30, 0, p).toFixed(2) + 'px)', opacity: Math.min(1, p * 2) }; }, 160, 15);
+    [[PC.x + 128, PC.y + 34, '#FFC53D', 12, 380], [PC.x + 19, PC.y + 60, '#37D3C0', 9, 480], [PC.x + 119, PC.y + 102, '#7EA3FF', 8, 580]].forEach(function (a) { spark(a[0], a[1], a[2], a[3], a[4], true); });
+    await wait(560);
+  }
+  async function close() {
+    if (phase !== 'card') return; phase = 'closing';
+    var card = $('card');
+    if (concept === '2') {
+      // кот радуется в поп-апе, потом поп-ап сворачивается в капсулу с объектом
+      seq.pcat = null;
+      run($('pcJ'), [{ opacity: 0 }, { opacity: 1 }], { duration: 140, easing: 'ease-out' });
+      run($('pcA'), [{ opacity: 0 }], { duration: 180, delay: 60, easing: 'ease-in' }); run($('pcB'), [{ opacity: 0 }], { duration: 180, delay: 60, easing: 'ease-in' });
+      run($('pcatb'), [{ transform: 'none' }, { transform: 'translateY(5px) scale(1.04,.94)', offset: .18 }, { transform: 'translateY(-9px) scale(.97,1.04)', offset: .5 }, { transform: 'translateY(1px)', offset: .78 }, { transform: 'none' }], { duration: 640, easing: 'ease-out' });
+      [[PC.x + 31, PC.y + 34, '#FFC53D', 13, 120], [PC.x + 121, PC.y + 49, '#37D3C0', 10, 220], [PC.x + 128, PC.y + 15, '#7EA3FF', 9, 330], [PC.x + 20, PC.y + 89, '#FFC53D', 8, 400]].forEach(function (a) { spark(a[0], a[1], a[2], a[3], a[4], true); });
+      await wait(900);
+    }
+    run(card, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.06)', opacity: 0 }], { duration: 380, easing: 'cubic-bezier(.5,0,.75,0)' });
+    run($('dim'), [{ opacity: .35 }, { opacity: 0 }], { duration: 380, easing: 'ease-in' }); $('dim').classList.remove('on'); card.classList.remove('on');
+    await wait(260);
+    run($('cap'), [{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    if (concept === '2') {
+      // объект снова в капсуле и приземляется в окно с пружиной
+      run($('obj'), [{ transform: 'translateY(-10px) scale(.9)' }, { transform: 'translateY(3px) scale(1.03,.97)', offset: .55 }, { transform: 'none' }], { duration: 520, easing: 'ease-out' });
+      [[86, 640, '#FFC53D', 12, 200], [30, 648, '#37D3C0', 9, 300]].forEach(function (a) { spark.apply(null, a); });
+      await wait(1400);
+    } else {
+      // радость: поза меняется на «радуется», кот подпрыгивает внутри капсулы
+      run($('catB'), [{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+      run(document.querySelector('.cat'), [{ transform: 'none' }, { transform: 'translateY(5px) scale(1.04,.94)', offset: .18 }, { transform: 'translateY(-7px) scale(.97,1.04)', offset: .5 }, { transform: 'translateY(1px)', offset: .78 }, { transform: 'none' }], { duration: 620, easing: 'ease-out' });
+      [[88, 640, '#FFC53D', 12, 200], [30, 648, '#37D3C0', 9, 300], [70, 630, '#2C64E3', 8, 420]].forEach(function (a) { spark.apply(null, a); });
+      await wait(1800);
+    }
+    seq.vid = null;
+    // кот (или объект) уходит вниз внутри капсулы, капсула уезжает
+    run(inner(), [{ transform: 'none' }, { transform: 'translateY(70px)' }], { duration: 420, easing: 'cubic-bezier(.5,0,.75,0)' });
+    await wait(180);
+    run($('cap'), [{ transform: 'none', opacity: 1 }, { transform: 'translateY(96px) scale(.94)', opacity: 0 }], { duration: 460, easing: 'cubic-bezier(.5,0,.75,0)' });
+    await wait(1500);
+    reset();
+  }
+  function reset() {
+    gen++; timers.forEach(clearTimeout); timers = []; live.forEach(function (a) { try { a.cancel(); } catch (e) {} }); live = [];
+    $('sparks').innerHTML = ''; $('dim').classList.remove('on'); $('card').classList.remove('on'); seq.vid = null; seq.obj = null; seq.pcat = null;
+    ['cap', 'dim', 'card', 'pcat', 'obj'].forEach(function (id) { $(id).removeAttribute('style'); }); document.querySelector('.cat').removeAttribute('style'); $('catb').classList.remove('idle'); $('catB').style.opacity = 0;
+    ['pcA', 'pcB', 'pcJ'].forEach(function (id) { $(id).style.opacity = 0; });
+    phase = 'idle'; start();
+  }
+  function inner() { return concept === '2' ? $('obj') : document.querySelector('.cat'); }
+  $('cap').addEventListener('click', open);
+  $('cardBtn').addEventListener('click', close);
+  $('dim').addEventListener('click', close);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  document.querySelectorAll('#segV button').forEach(function (b) {
+    b.addEventListener('click', function () { document.querySelectorAll('#segV button').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); }); cur = b.dataset.v; reset(); });
+  });
+  var concept = '1';
+  function setConcept(c) { concept = c; document.body.dataset.c = c; document.querySelectorAll('button[data-c]').forEach(function (o) { o.setAttribute('aria-pressed', String(o.dataset.c === c)); }); }
+  document.querySelectorAll('button[data-c]').forEach(function (b) { b.addEventListener('click', function () { setConcept(b.dataset.c); reset(); }); });
+  var qs = new URLSearchParams(location.search), q = qs.get('v'); if (q && C[q]) { cur = q; document.querySelectorAll('#segV button').forEach(function (o) { o.setAttribute('aria-pressed', String(o.dataset.v === q)); }); }
+  setConcept(qs.get('c') === '2' ? '2' : '1');
+  window.demo = { open: open, close: close, reset: reset, get phase() { return phase; } };
+  Promise.all([document.fonts ? document.fonts.ready : 0, loadCat(C[cur].video)]).then(function () { reset(); preload(VID.cashback.concat(VID.newyear, VID.piggy)); ['cashback', 'newyear', 'piggy'].forEach(function (t) { loadCat(t); loadC2(t); preload(OBJF[t].concat(IDLE[t])); }); });
+})();
+</script>
+</body>
+</html>
