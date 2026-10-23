@@ -3,26 +3,26 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url(montserrat-0.woff2) format('truetype');
+  src: url(mont-0.woff2) format('woff2');
 }
 @font-face {
   font-family: 'Montserrat';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url(montserrat-1.woff2) format('truetype');
+  src: url(mont-1.woff2) format('woff2');
 }
 @font-face {
   font-family: 'Montserrat';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url(montserrat-2.woff2) format('truetype');
+  src: url(mont-2.woff2) format('woff2');
 }
 @font-face {
   font-family: 'Montserrat';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url(montserrat-3.woff2) format('truetype');
+  src: url(mont-3.woff2) format('woff2');
 }

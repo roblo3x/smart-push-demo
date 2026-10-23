@@ -46,7 +46,7 @@ button{font:inherit}
 .homeind{left:121.5px;top:799px;width:132px;height:5px;border-radius:4px;background:#192433;z-index:20}
 /* наша капсула (Figma 171:25738), кот живёт внутри */
 #cap{left:16px;top:651px;width:343px;height:64px;border:0;padding:0 14px 0 var(--pl,92px);display:flex;align-items:center;gap:6px;text-align:left;color:#fff;border-radius:32px;
-  background:#0c101a url("assets/capsule-bg.png") left center/343px 64px no-repeat;box-shadow:0 2px 7px #04070e1a,0 8px 22px -2px #04070e2e,inset 0 0 0 1px #ffffff0d;cursor:pointer;z-index:6;opacity:0;transform-origin:50% 100%;-webkit-tap-highlight-color:transparent}
+  background:#0c101a url("assets/capsule-bg.webp") left center/343px 64px no-repeat;box-shadow:0 2px 7px #04070e1a,0 8px 22px -2px #04070e2e,inset 0 0 0 1px #ffffff0d;cursor:pointer;z-index:6;opacity:0;transform-origin:50% 100%;-webkit-tap-highlight-color:transparent}
 #cap:focus-visible{outline:2px solid #8fb2ff;outline-offset:3px}
 #cap .tx{flex:1;min-width:0;position:relative}
 #cap .t1{display:block;font-size:15px;font-weight:600;line-height:20px;letter-spacing:-.42px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -81,7 +81,7 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
 #dim{inset:0;background:#0b1220;opacity:0;pointer-events:none;z-index:8}
 #dim.on{pointer-events:auto}
 /* поп-ап: тёмная карточка 343×377, сверху 3D-видео */
-#card{left:16px;top:338px;width:343px;height:377px;border-radius:32px;overflow:hidden;background:#0c101a url("assets/card-bg.png") 0 0/343px 377px no-repeat;color:#fff;text-align:center;z-index:9;opacity:0;pointer-events:none;
+#card{left:16px;top:338px;width:343px;height:377px;border-radius:32px;overflow:hidden;background:#0c101a url("assets/card-bg.webp") 0 0/343px 377px no-repeat;color:#fff;text-align:center;z-index:9;opacity:0;pointer-events:none;
   box-shadow:0 16px 32px rgba(8,12,24,.35),0 3px 8px rgba(8,12,24,.25);transform-origin:171.5px 345px}
 #card.on{pointer-events:auto}
 .media{position:absolute;left:0;top:0;width:343px;height:172px}
@@ -115,7 +115,7 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
       <div class="layer frame"></div>
       <div class="glass">
         <div class="scr" id="scr">
-          <img class="abs home" src="assets/home.png" alt="Главная ОМП">
+          <img class="abs home" src="assets/home.webp" alt="Главная ОМП">
           <button class="abs" id="cap" type="button" aria-haspopup="dialog">
             <span class="catwin" id="catwin" aria-hidden="true"><span class="cat"><span class="catb" id="catb"><img id="catA" alt=""><img id="catB" alt="" style="opacity:0"></span></span></span>
             <span class="catwin" id="objwin" aria-hidden="true"><span class="obj" id="obj"><img id="oA" alt=""><img id="oB" alt="" style="opacity:0"><video id="oV" muted playsinline loop preload="auto"></video></span></span>
@@ -362,7 +362,8 @@ body[data-c="2"] .pcat{display:block} body[data-c="2"] .media>img{display:none}
   window.demo = { open: open, close: close, reset: reset, get phase() { return phase; } };
   within(document.fonts ? document.fonts.ready : 0, 1500).then(function () {
     reset();
-    ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([catSrc(t, 'hold'), catSrc(t, 'joy'), cat2Src(t, 'joy')]); });
+    // позы других пушей — после того как капсула текущего уже на экране
+    setTimeout(function () { ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([catSrc(t, 'hold'), catSrc(t, 'joy'), cat2Src(t, 'joy')]); }); }, 3000);
     if (!VMODE) ['cashback', 'newyear', 'piggy'].forEach(function (t) { preload([IDLE[t][0], OBJF[t][0]]); preload(VID[t].concat(OBJF[t], IDLE[t])); });
   });
 })();
